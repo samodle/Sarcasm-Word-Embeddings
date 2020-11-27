@@ -10,17 +10,23 @@ def filter_not_in_vocab(in_str):
     else:
         return False
 
+SARCASM_LABEL = 1
+SERIOUS_LABEL = 0
 
 # set up mechanism for timing how long the program takes to execute
 logging.basicConfig(format="%(levelname)s - %(asctime)s: %(message)s", datefmt='%H:%M:%S', level=logging.INFO)
 t = time()
 
-comments_df = pd.read_csv(r'C:\Users\Sam\Desktop\train-balanced-sarcasm.csv')
+comments_df = pd.read_csv(r'C:\Users\Sam\Desktop\train-balanced-sarcasm-Full.csv')
 comment_count = len(comments_df)
 
-count_correct = 0
-count_incorrect = 0
-count_net = 0
+sarcastic_count_correct = 0
+sarcastic_count_incorrect = 0
+
+serious_count_correct = 0
+serious_count_incorrect = 0
+
+err_count = 0
 
 front_to_back = True
 temp = True
@@ -52,25 +58,41 @@ vocab_filter_a = filter(filter_not_in_vocab, df_a)
 df_a = list(vocab_filter_a)
 
 # calculate distance
-distance = w2v_model.wv.n_similarity(df_a, df_b)
-print(distance)
+#distance = w2v_model.wv.n_similarity(df_a, df_b)
+#print(distance)
 
-for name, val in sarcastic_df.iterrows():
+test_df = pd.read_csv(r'C:\Users\Sam\Desktop\train-balanced-sarcasm-Test.csv')
+
+for name, val in test_df.iterrows():
     a = val.comment
     n = a.split()
     vocab_filter_n = filter(filter_not_in_vocab, n)
     df_n = list(vocab_filter_n)
 
-    sar_dist = w2v_model.wv.n_similarity(df_n, df_a)
-    ser_dist = w2v_model.wv.n_similarity(df_n, df_b)
+    try:
+        sar_dist = w2v_model.wv.n_similarity(df_n, df_a)
+        ser_dist = w2v_model.wv.n_similarity(df_n, df_b)
 
-    count_net += 1
-    if ser_dist < sar_dist:
-        count_incorrect += 1
-    else:
-        count_correct += 1
+        # sar_distW = w2v_model.wmdistance(df_n, df_a)
+        # ser_distW = w2v_model.wmdistance(df_n, df_b)
 
-    pct_correct = (count_correct * 100 / count_net)
-    print(f'% Correct: {pct_correct}')
+        if val.label == SARCASM_LABEL:
+            if ser_dist < sar_dist:
+                sarcastic_count_incorrect += 1
+            else:
+                sarcastic_count_correct += 1
+        else:  # it's serious
+            if ser_dist > sar_dist:
+                serious_count_incorrect += 1
+            else:
+                serious_count_correct += 1
+
+        sarcastic_pct_correct = (sarcastic_count_correct * 100 / (max(sarcastic_count_correct + sarcastic_count_incorrect, 1)))
+        serious_pct_correct = (serious_count_correct * 100 / (max(serious_count_correct + serious_count_incorrect, 1)))
+        print(f'%NET: {(sarcastic_count_correct+serious_count_correct)*100/(max(sarcastic_count_correct + sarcastic_count_incorrect + serious_count_correct + serious_count_incorrect, 1))}  ||  N Similarity - Sarcastic Correct: {sarcastic_pct_correct}, Serious Correct: {serious_pct_correct}')
+        #print(f'%WMD - Sarcastic Correct: {pct_correct}, Serious Correct: {}')
+    except:
+        err_count += 1
+        print(f'# Unable To Calculate: {err_count}')
 
 print('fin')
