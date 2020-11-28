@@ -10,6 +10,13 @@ def filter_not_in_vocab(in_str):
     else:
         return False
 
+
+def percentage(part, whole):
+    if whole == 0:
+        whole = 1
+    return round(100 * part / whole, 1)
+
+
 SARCASM_LABEL = 1
 SERIOUS_LABEL = 0
 
@@ -17,7 +24,7 @@ SERIOUS_LABEL = 0
 logging.basicConfig(format="%(levelname)s - %(asctime)s: %(message)s", datefmt='%H:%M:%S', level=logging.INFO)
 t = time()
 
-comments_df = pd.read_csv(r'C:\Users\Sam\Desktop\train-balanced-sarcasm-Full.csv')
+comments_df = pd.read_csv(r'C:\Users\Samuel\Desktop\train-balanced-sarcasm-Full.csv')
 comment_count = len(comments_df)
 
 sarcastic_count_correct = 0
@@ -27,6 +34,7 @@ serious_count_correct = 0
 serious_count_incorrect = 0
 
 err_count = 0
+net_count = 0
 
 front_to_back = True
 temp = True
@@ -58,23 +66,23 @@ vocab_filter_a = filter(filter_not_in_vocab, df_a)
 df_a = list(vocab_filter_a)
 
 # calculate distance
-#distance = w2v_model.wv.n_similarity(df_a, df_b)
-#print(distance)
+# distance = w2v_model.wv.n_similarity(df_a, df_b)
+# print(distance)
 
-test_df = pd.read_csv(r'C:\Users\Sam\Desktop\train-balanced-sarcasm-Test.csv')
+test_df = pd.read_csv(r'C:\Users\Samuel\Desktop\train-balanced-sarcasm-Test.csv')
 
 for name, val in test_df.iterrows():
-    a = val.comment
-    n = a.split()
-    vocab_filter_n = filter(filter_not_in_vocab, n)
-    df_n = list(vocab_filter_n)
-
     try:
+        a = val.comment
+        n = a.split()
+        vocab_filter_n = filter(filter_not_in_vocab, n)
+        df_n = list(vocab_filter_n)
+
         sar_dist = w2v_model.wv.n_similarity(df_n, df_a)
         ser_dist = w2v_model.wv.n_similarity(df_n, df_b)
 
-        # sar_distW = w2v_model.wmdistance(df_n, df_a)
-        # ser_distW = w2v_model.wmdistance(df_n, df_b)
+        # sar_dist = w2v_model.wmdistance(df_n, df_a)
+        # ser_dist = w2v_model.wmdistance(df_n, df_b)
 
         if val.label == SARCASM_LABEL:
             if ser_dist < sar_dist:
@@ -87,10 +95,13 @@ for name, val in test_df.iterrows():
             else:
                 serious_count_correct += 1
 
-        sarcastic_pct_correct = (sarcastic_count_correct * 100 / (max(sarcastic_count_correct + sarcastic_count_incorrect, 1)))
-        serious_pct_correct = (serious_count_correct * 100 / (max(serious_count_correct + serious_count_incorrect, 1)))
-        print(f'%NET: {(sarcastic_count_correct+serious_count_correct)*100/(max(sarcastic_count_correct + sarcastic_count_incorrect + serious_count_correct + serious_count_incorrect, 1))}  ||  N Similarity - Sarcastic Correct: {sarcastic_pct_correct}, Serious Correct: {serious_pct_correct}')
-        #print(f'%WMD - Sarcastic Correct: {pct_correct}, Serious Correct: {}')
+        net_count += 1
+
+        sarcastic_pct_correct = percentage(sarcastic_count_correct, sarcastic_count_correct + sarcastic_count_incorrect)
+        serious_pct_correct = percentage(serious_count_correct, serious_count_correct + serious_count_incorrect)
+        print(
+            f'%NET: {percentage(sarcastic_count_correct + serious_count_correct, net_count)}%.  Count: {net_count + err_count} in {format(round((time() - t) / 60, 2))}  ||  N Similarity - Sarcastic Correct: {sarcastic_pct_correct}%, Serious Correct: {serious_pct_correct}%')
+        # print(f'%WMD - Sarcastic Correct: {pct_correct}, Serious Correct: {}')
     except:
         err_count += 1
         print(f'# Unable To Calculate: {err_count}')
